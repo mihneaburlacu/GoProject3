@@ -23,7 +23,7 @@ func TestValidateEndPointURL(t *testing.T) {
 		},
 		{
 			name: "pay-day url ok",
-			url:  "/till-salary/pay-day/15",
+			url:  "/till-salary/pay-day/15/list-dates",
 			want: true,
 		},
 		{
@@ -169,6 +169,7 @@ func TestCalculatePayDayDates(t *testing.T) {
 func TestTillSalaryHandler(t *testing.T) {
 	type testCases struct {
 		name         string
+		methodType   string
 		url          string
 		statusInput  int
 		payDay       int
@@ -177,6 +178,7 @@ func TestTillSalaryHandler(t *testing.T) {
 	for _, scenario := range []testCases{
 		{
 			name:        "Valid URL (12)",
+			methodType:  http.MethodGet,
 			url:         "/till-salary/how-much?pay_day=12",
 			statusInput: http.StatusCreated,
 			payDay:      12,
@@ -187,6 +189,7 @@ func TestTillSalaryHandler(t *testing.T) {
 		},
 		{
 			name:        "Valid URL (27)",
+			methodType:  http.MethodGet,
 			url:         "/till-salary/how-much?pay_day=27",
 			statusInput: http.StatusCreated,
 			payDay:      27,
@@ -197,6 +200,7 @@ func TestTillSalaryHandler(t *testing.T) {
 		},
 		{
 			name:         "Invalid URL",
+			methodType:   http.MethodGet,
 			url:          "/invalid-url?pay_day=12",
 			statusInput:  http.StatusBadRequest,
 			payDay:       12,
@@ -204,15 +208,24 @@ func TestTillSalaryHandler(t *testing.T) {
 		},
 		{
 			name:         "Invalid pay_day parameter",
+			methodType:   http.MethodGet,
 			url:          "/till-salary/how-much?pay_day=32",
 			statusInput:  http.StatusBadRequest,
 			payDay:       32,
 			wantResponse: Response{Message: "Invalid pay_day parameter"},
 		},
+		{
+			name:         "Post method",
+			methodType:   http.MethodPost,
+			url:          "/till-salary/how-much?pay_day=15",
+			statusInput:  http.StatusMethodNotAllowed,
+			payDay:       15,
+			wantResponse: Response{Message: "Method not allowed"},
+		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			//create a new request with URL
-			req, err := http.NewRequest("GET", scenario.url, nil)
+			req, err := http.NewRequest(scenario.methodType, scenario.url, nil)
 			if err != nil {
 				t.Errorf("Error while creating new request: %v", err)
 			}
@@ -247,6 +260,7 @@ func TestTillSalaryHandler(t *testing.T) {
 func TestListPayDayDatesHandler(t *testing.T) {
 	type testCases struct {
 		name         string
+		methodType   string
 		url          string
 		statusInput  int
 		wantResponse Response
@@ -255,7 +269,8 @@ func TestListPayDayDatesHandler(t *testing.T) {
 	for _, scenario := range []testCases{
 		{
 			name:        "valid URL (15)",
-			url:         "/till-salary/pay-day/15/list-distinct",
+			methodType:  http.MethodGet,
+			url:         "/till-salary/pay-day/15/list-dates",
 			statusInput: http.StatusCreated,
 			wantResponse: Response{Data: map[string]interface{}{
 				"pay_day_dates": []any{time.Date(2023, 3, 15, 0, 0, 0, 0, time.Local).Format("2006-01-02"), time.Date(2023, 4, 15, 0, 0, 0, 0, time.Local).Format("2006-01-02"),
@@ -267,21 +282,31 @@ func TestListPayDayDatesHandler(t *testing.T) {
 		},
 		{
 			name:         "invalid pay day parameter",
-			url:          "/till-salary/pay-day/32/list-distinct",
+			methodType:   http.MethodGet,
+			url:          "/till-salary/pay-day/32/list-dates",
 			statusInput:  http.StatusBadRequest,
 			wantResponse: Response{Message: "Invalid pay_day parameter"},
 		},
 		{
-			name:         "invalid URL: list-distinct is missing",
+			name:         "invalid URL: list-dates is missing",
+			methodType:   http.MethodGet,
 			url:          "/till-salary/pay-day/14",
 			statusInput:  http.StatusBadRequest,
 			wantResponse: Response{Message: "Invalid pay-day url"},
 		},
+		{
+			name:         "Post method",
+			methodType:   http.MethodPost,
+			url:          "/till-salary/pay-day/15/list-dates",
+			statusInput:  http.StatusMethodNotAllowed,
+			wantResponse: Response{Message: "Method not allowed"},
+		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			req, err := http.NewRequest("GET", scenario.url, nil)
+			// Create new request with url
+			req, err := http.NewRequest(scenario.methodType, scenario.url, nil)
 			if err != nil {
-				t.Fatal(err)
+				t.Errorf("Error while creating new request: %#v", req)
 			}
 
 			responseRecorder := httptest.NewRecorder()
@@ -293,7 +318,7 @@ func TestListPayDayDatesHandler(t *testing.T) {
 			// Check the status code of the response
 			status := responseRecorder.Code
 			if status != scenario.statusInput {
-				t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusCreated)
+				t.Errorf("handler returned wrong status code: got %#v want %#v", status, http.StatusCreated)
 			}
 
 			var gotResponse Response

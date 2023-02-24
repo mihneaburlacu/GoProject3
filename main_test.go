@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"github.com/google/go-cmp/cmp"
 	"net/http"
 	"testing"
 )
@@ -11,7 +10,7 @@ func TestHandlerMain(t *testing.T) {
 	type errorCases struct {
 		name      string
 		serveFunc func(addr string, handler http.Handler) error
-		wantError error
+		wantError bool
 	}
 	for _, scenario := range []errorCases{
 		{
@@ -19,17 +18,28 @@ func TestHandlerMain(t *testing.T) {
 			serveFunc: func(addr string, handler http.Handler) error {
 				return errors.New("error while listen and serve")
 			},
-			wantError: errors.New("error while listen and serve"),
+			wantError: true,
+		},
+		{
+			name: "no error",
+			serveFunc: func(addr string, handler http.Handler) error {
+				return nil
+			},
+			wantError: false,
 		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			gotErr := handlerMain(scenario.serveFunc)
+			var got bool
 
-			if scenario.wantError != nil && gotErr != nil {
-				diff := cmp.Diff(gotErr.Error(), scenario.wantError.Error())
-				if diff != "" {
-					t.Errorf("wanted: %#v, got: %#v", scenario.wantError, gotErr)
-				}
+			gotErr := handlerMain(scenario.serveFunc)
+			if gotErr != nil {
+				got = true
+			} else {
+				got = false
+			}
+
+			if got != scenario.wantError {
+				t.Errorf("wanted: %#v, got: %#v", scenario.wantError, gotErr)
 			}
 		})
 	}
