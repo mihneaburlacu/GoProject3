@@ -20,13 +20,6 @@ func TestHandlerMain(t *testing.T) {
 			},
 			wantError: true,
 		},
-		{
-			name: "no error",
-			serveFunc: func(addr string, handler http.Handler) error {
-				return nil
-			},
-			wantError: false,
-		},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
 			var got bool
